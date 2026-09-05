@@ -1,0 +1,36 @@
+{
+  "name": "balance-cambiario-argentina",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard institucional del Balance Cambiario de Argentina (BCRA) — dashboard + comparador multivariable de series.",
+  "scripts": {
+    "predev": "npm run actualizar-datos",
+    "dev": "next dev",
+    "prebuild": "npm run actualizar-datos",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "actualizar-datos": "node scripts/aggregate.mjs"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "plotly.js": "2.35.2",
+    "react-plotly.js": "2.6.0",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.9",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@types/react-plotly.js": "2.6.3",
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.39",
+    "tailwindcss": "3.4.4",
+    "typescript": "5.5.3"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}
