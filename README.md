@@ -32,7 +32,8 @@ evolución del **Balance Cambiario de Argentina** (Mercado Único y Libre de Cam
 - **Exportar PNG (1,6:1)**: botón que descarga el gráfico como imagen apaisada de 1280 × 800
   px de diseño a doble resolución (2560 × 1600 px), pensada para un informe de research.
   Es una figura propia para ese formato (no una captura de la pantalla): cabecera
-  compacta (título, subtítulo y leyenda pegados, sin espacios vacíos), leyenda con el
+  compacta (título y subtítulo en la misma línea, con el subtítulo a la derecha del título;
+  leyenda pegada debajo, sin espacios vacíos), leyenda con el
   nombre completo de cada serie (sin truncar), fechas y unidades de los ejes al doble de
   tamaño, y series y ejes al doble de grosor. El archivo se llama `…_16x10.png`.
 - **Etiquetas de valores**: cada serie seleccionada tiene un check "Etiquetas de valores"

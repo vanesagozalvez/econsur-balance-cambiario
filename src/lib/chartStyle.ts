@@ -40,8 +40,8 @@ export const EXPORT_ANCHO = 1280;
 export const EXPORT_ALTO = 800;
 export const EXPORT_ESCALA = 2;
 
-/** Alto (px desde el borde superior) que ocupa el bloque título + subtítulo en la exportación. */
-const EXPORT_ALTO_ENCABEZADO = 92;
+/** Alto (px desde el borde superior) que ocupa el encabezado (título + subtítulo en UNA línea) en la exportación. */
+const EXPORT_ALTO_ENCABEZADO = 64;
 /** Aire entre la leyenda y el área de gráfico (lugar para las etiquetas de valores más altas). */
 const EXPORT_AIRE_SOBRE_GRAFICO = 14;
 const EXPORT_MARGEN_INFERIOR = 104;
@@ -137,7 +137,20 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
   }
 
   let tituloHtml = `<b style="font-size:${tituloTamano}px;color:${colorTexto}">${titulo}</b>`;
-  if (subtitulo) {
+  if (subtitulo && esExp) {
+    // Exportación: el subtítulo va a la DERECHA del título, en la misma línea (misma línea base).
+    // Si el subtítulo es largo (p.ej. "Productos Minerales no Metálicos (Cementos, …)") se achica
+    // lo justo para que el encabezado entre completo en el ancho de la imagen.
+    const separacion = "\u00A0\u00A0\u00A0\u00A0";
+    const disponible = EXPORT_ANCHO - EXPORT_MARGEN_LATERAL - 24;
+    const anchoTitulo = titulo.length * tituloTamano * 0.6 + 42;
+    let tamSub = subtituloTamano;
+    for (const t of [24, 22, 20, 18, 16]) {
+      tamSub = t;
+      if (anchoTitulo + subtitulo.length * t * 0.54 <= disponible) break;
+    }
+    tituloHtml += `${separacion}<span style="font-size:${tamSub}px;color:${colorTextoSecundario}">${subtitulo}</span>`;
+  } else if (subtitulo) {
     tituloHtml += `<br><span style="font-size:${subtituloTamano}px;color:${colorTextoSecundario}">${subtitulo}</span>`;
   }
 
@@ -161,7 +174,10 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
   const titleConfig: any = esExp
     ? {
         text: tituloHtml,
-        font: { color: colorTexto, family: FUENTE },
+        // IMPORTANTE: el `size` debe ser el del texto principal. Plotly calcula la posición vertical
+        // del título con este tamaño; si fuera menor que el del <b> en línea, el título se corre
+        // hacia arriba y queda cortado contra el borde superior de la imagen.
+        font: { color: colorTexto, family: FUENTE, size: tituloTamano },
         // Alineado al borde izquierdo del área de gráfico (igual que la leyenda y el pie),
         // pegado al borde superior de la imagen.
         xref: "paper",
