@@ -31,6 +31,43 @@ export function colorEtiqueta(indice: number): string {
   return PALETA_ETIQUETAS[indice % PALETA_ETIQUETAS.length];
 }
 
+/**
+ * Formato de la imagen PNG exportable: apaisado 1,6:1 (16:10), pensado para
+ * entrar a ancho de columna en un informe de research. Las medidas están en
+ * "px de diseño"; al exportar se multiplican por EXPORT_ESCALA (2560 × 1600 px).
+ */
+export const EXPORT_ANCHO = 1280;
+export const EXPORT_ALTO = 800;
+export const EXPORT_ESCALA = 2;
+
+/** Alto (px desde el borde superior) que ocupa el bloque título + subtítulo en la exportación. */
+const EXPORT_ALTO_ENCABEZADO = 92;
+/** Aire entre la leyenda y el área de gráfico (lugar para las etiquetas de valores más altas). */
+const EXPORT_AIRE_SOBRE_GRAFICO = 14;
+const EXPORT_MARGEN_INFERIOR = 104;
+const EXPORT_MARGEN_LATERAL = 56;
+
+/**
+ * Estima en cuántas filas se acomoda una leyenda horizontal con estos nombres
+ * (Arial: ~0,56 em por carácter + símbolo de la serie). Es deliberadamente
+ * conservadora: si se pasa, queda un poco de aire; si se quedara corta, la
+ * leyenda se montaría sobre el gráfico.
+ */
+function estimarFilasLeyenda(nombres: string[], tamanoFuente: number, anchoDisponible: number): number {
+  let filas = 1;
+  let usado = 0;
+  for (const nombre of nombres) {
+    const ancho = nombre.length * tamanoFuente * 0.56 + 70;
+    if (usado > 0 && usado + ancho > anchoDisponible) {
+      filas += 1;
+      usado = ancho;
+    } else {
+      usado += ancho;
+    }
+  }
+  return filas;
+}
+
 interface EstilizarOpciones {
   titulo: string;
   subtitulo?: string;
@@ -42,8 +79,13 @@ interface EstilizarOpciones {
   mostrarLeyenda?: boolean;
   esPorcentaje?: boolean;
   alturaCompacta?: boolean; // para minigráficos del dashboard
-  /** Tipografías y márgenes ampliados para la exportación a imagen (PNG 1:1). */
+  /**
+   * Layout para la imagen PNG exportable (apaisada 1,6:1): ejes y leyenda con
+   * tipografía grande, líneas al doble de grosor y cabecera compacta.
+   */
   exportar?: boolean;
+  /** Nombres COMPLETOS de las series (sin truncar), para dimensionar la cabecera en la exportación. */
+  nombresLeyenda?: string[];
 }
 
 /**
@@ -62,7 +104,10 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
     esPorcentaje = false,
     alturaCompacta = false,
     exportar = false,
+    nombresLeyenda = [],
   } = opciones;
+
+  const esExp = exportar && !alturaCompacta;
 
   const colorFondo = fondoOscuro ? "#0E1117" : "#FFFFFF";
   const colorTexto = fondoOscuro ? "#E5E7EB" : "#1F2937";
@@ -70,88 +115,153 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
   const colorGrid = fondoOscuro ? "#2D3340" : "#E5E7EB";
   const colorEje = fondoOscuro ? "#4B5563" : "#9CA3AF";
 
-  const tituloTamano = alturaCompacta ? 14 : exportar ? 30 : 20;
-  const subtituloTamano = alturaCompacta ? 11 : exportar ? 20 : 13;
-  const fuenteBase = alturaCompacta ? 11 : exportar ? 17 : 13;
-  const fuenteLeyenda = alturaCompacta ? 10 : exportar ? 16 : 12;
-  const fuenteTicks = alturaCompacta ? 9 : exportar ? 15 : 11;
-  const fuentePie = exportar ? 14 : 10;
+  const tituloTamano = alturaCompacta ? 14 : esExp ? 38 : 20;
+  const subtituloTamano = alturaCompacta ? 11 : esExp ? 24 : 13;
+  const fuenteBase = alturaCompacta ? 11 : esExp ? 22 : 13;
+  // En la exportación, los textos de los ejes (unidades y fechas) van al doble de tamaño relativo.
+  const fuenteTicks = alturaCompacta ? 9 : esExp ? 36 : 11;
+  const fuentePie = esExp ? 20 : 10;
+  const grosorEje = esExp ? 2 : 1;
+  const largoTick = esExp ? 8 : 5;
+
+  // Leyenda: en la exportación se agranda y se achica solo lo justo si los nombres
+  // completos obligarían a usar más de 2 filas.
+  let fuenteLeyenda = alturaCompacta ? 10 : 12;
+  let filasLeyenda = 1;
+  if (esExp) {
+    for (const f of [26, 24, 22]) {
+      fuenteLeyenda = f;
+      filasLeyenda = estimarFilasLeyenda(nombresLeyenda, f, EXPORT_ANCHO - 300);
+      if (filasLeyenda <= 2) break;
+    }
+  }
 
   let tituloHtml = `<b style="font-size:${tituloTamano}px;color:${colorTexto}">${titulo}</b>`;
   if (subtitulo) {
     tituloHtml += `<br><span style="font-size:${subtituloTamano}px;color:${colorTextoSecundario}">${subtitulo}</span>`;
   }
 
+  // Márgenes. En la exportación son mínimos (los ejes los amplían solos con `automargin`)
+  // y el margen superior se calcula justo para alojar título + subtítulo + leyenda.
+  const altoLeyenda = mostrarLeyenda ? Math.ceil(filasLeyenda * fuenteLeyenda * 1.4) + 8 : 0;
   const margen = alturaCompacta
     ? { l: 44, r: 16, t: 56, b: 44 }
-    : exportar
-    ? { l: 100, r: 70, t: 170, b: 125 }
+    : esExp
+    ? {
+        // Margen lateral mínimo = medio ancho de una etiqueta de fecha (la del primer/último mes
+        // está centrada en su marca y no debe cortarse). Los ejes verticales lo amplían solos.
+        l: EXPORT_MARGEN_LATERAL,
+        r: EXPORT_MARGEN_LATERAL,
+        t: EXPORT_ALTO_ENCABEZADO + altoLeyenda + EXPORT_AIRE_SOBRE_GRAFICO,
+        b: EXPORT_MARGEN_INFERIOR,
+      }
     : { l: 60, r: 40, t: 90, b: 80 };
+  const altoAreaGrafico = EXPORT_ALTO - margen.t - margen.b;
+
+  const titleConfig: any = esExp
+    ? {
+        text: tituloHtml,
+        font: { color: colorTexto, family: FUENTE },
+        // Alineado al borde izquierdo del área de gráfico (igual que la leyenda y el pie),
+        // pegado al borde superior de la imagen.
+        xref: "paper",
+        x: 0,
+        xanchor: "left",
+        yref: "container",
+        y: 1,
+        yanchor: "top",
+        pad: { t: 10, r: 0, b: 0, l: 0 },
+      }
+    : {
+        text: tituloHtml,
+        font: { color: colorTexto, family: FUENTE },
+        x: 0.01,
+        xanchor: "left",
+        y: alturaCompacta ? 0.95 : 0.97,
+        yanchor: "top",
+      };
+
+  const legendConfig: any = !mostrarLeyenda
+    ? undefined
+    : esExp
+    ? {
+        orientation: "h",
+        // La leyenda se ancla justo debajo del subtítulo (y crece hacia abajo): sin hueco.
+        xanchor: "left",
+        x: 0,
+        yanchor: "top",
+        y: 1 + (margen.t - EXPORT_ALTO_ENCABEZADO) / altoAreaGrafico,
+        font: { size: fuenteLeyenda, color: "#000000", family: FUENTE },
+        bgcolor: "rgba(0,0,0,0)",
+      }
+    : {
+        orientation: "h",
+        yanchor: "bottom",
+        y: 1.0,
+        xanchor: "left",
+        x: 0.0,
+        font: { size: fuenteLeyenda, color: "#000000", family: FUENTE },
+        bgcolor: "rgba(0,0,0,0)",
+      };
+
+  const ejeY = {
+    showgrid: true,
+    gridwidth: 1,
+    gridcolor: colorGrid,
+    zeroline: false,
+    // En la exportación los ejes verticales llevan línea y marcas al doble de grosor.
+    showline: esExp,
+    linewidth: grosorEje,
+    linecolor: colorEje,
+    ticks: esExp ? "outside" : undefined,
+    tickwidth: grosorEje,
+    ticklen: largoTick,
+    tickcolor: colorEje,
+    automargin: true,
+    tickfont: { size: fuenteTicks, color: colorTextoSecundario },
+  };
 
   const layout: Partial<Layout> = {
-    title: {
-      text: tituloHtml,
-      font: { color: colorTexto, family: FUENTE },
-      x: 0.01,
-      xanchor: "left",
-      y: alturaCompacta ? 0.95 : 0.97,
-      yanchor: "top",
-    },
+    title: titleConfig,
     font: { family: FUENTE, size: fuenteBase, color: colorTexto },
     plot_bgcolor: colorFondo,
     paper_bgcolor: colorFondo,
     hovermode: "x unified",
     margin: margen,
     showlegend: mostrarLeyenda,
-    legend: mostrarLeyenda
-      ? {
-          orientation: "h",
-          yanchor: "bottom",
-          y: 1.0,
-          xanchor: "left",
-          x: 0.0,
-          font: { size: fuenteLeyenda, color: "#000000", family: FUENTE },
-          bgcolor: "rgba(0,0,0,0)",
-        }
-      : undefined,
+    legend: legendConfig,
     xaxis: {
       type: "category",
       showgrid: false,
       showline: true,
-      linewidth: 1,
+      linewidth: grosorEje,
       linecolor: colorEje,
       ticks: "outside",
+      tickwidth: grosorEje,
+      ticklen: largoTick,
       tickcolor: colorEje,
       tickangle: 0,
+      automargin: esExp,
       tickfont: { size: fuenteTicks, color: colorTextoSecundario },
     },
     yaxis: {
-      showgrid: true,
-      gridwidth: 1,
-      gridcolor: colorGrid,
-      zeroline: false,
-      showline: false,
-      automargin: true,
-      tickfont: { size: fuenteTicks, color: colorTextoSecundario },
+      ...ejeY,
       tickformat: esPorcentaje ? ".1%" : undefined,
     },
     yaxis2: {
+      ...ejeY,
       overlaying: "y",
       side: "right",
       showgrid: false,
-      zeroline: false,
-      showline: false,
-      automargin: true,
-      tickfont: { size: fuenteTicks, color: colorTextoSecundario },
     },
     annotations: [],
   };
 
   // Pie del gráfico: a la izquierda fuente/fecha de corte, a la derecha la fuente de los datos.
   // Se posiciona con `yshift` en píxeles (y no con una fracción del alto) para que quede
-  // siempre pegado al borde inferior, tenga el gráfico el tamaño que tenga (pantalla o PNG 1:1).
+  // siempre pegado al borde inferior, tenga el gráfico el tamaño que tenga (pantalla o PNG).
   const pieIzquierdo = [fuente, fechaCorte ? `Último dato: ${fechaCorte}` : ""].filter(Boolean).join("  ·  ");
-  const yshiftPie = exportar ? -70 : -52;
+  const yshiftPie = esExp ? -68 : -52;
   const anotaciones: Partial<Annotations>[] = [];
 
   if (pieIzquierdo && !alturaCompacta) {
@@ -244,6 +354,8 @@ interface TrazoOpciones {
   yaxis?: "y" | "y2";
   hoverFmt?: string;
   barmode100?: boolean;
+  /** Multiplicador del grosor de líneas y marcadores (2 en la exportación PNG). */
+  escalaLinea?: number;
   /** Si viene, se dibujan estas etiquetas de texto sobre los puntos/columnas ("" = sin etiqueta). */
   etiquetas?: string[];
   posicionTexto?: string;
@@ -264,7 +376,15 @@ export function crearTrazo(
   color: string,
   opciones: TrazoOpciones = {}
 ): Partial<PlotData> {
-  const { yaxis = "y", hoverFmt = ",.1f", etiquetas, posicionTexto, tamanoTexto = 11, colorTexto = color } = opciones;
+  const {
+    yaxis = "y",
+    hoverFmt = ",.1f",
+    escalaLinea = 1,
+    etiquetas,
+    posicionTexto,
+    tamanoTexto = 11,
+    colorTexto = color,
+  } = opciones;
   const hovertemplate = `%{y:${hoverFmt}}<extra>${nombreLeyenda}</extra>`;
   const base: Partial<PlotData> = {
     x,
@@ -291,7 +411,7 @@ export function crearTrazo(
         ...base,
         type: "scatter",
         mode: "lines",
-        line: { color, width: 2, shape: "spline", smoothing: 0.35 },
+        line: { color, width: 2 * escalaLinea, shape: "spline", smoothing: 0.35 },
         fill: "tozeroy",
         opacity: 0.6,
       };
@@ -301,7 +421,7 @@ export function crearTrazo(
         ...base,
         type: "scatter",
         mode: "lines",
-        line: { color, width: 2 },
+        line: { color, width: 2 * escalaLinea },
         fill: "tonexty",
         stackgroup: `stack_${yaxis}`,
       };
@@ -311,7 +431,7 @@ export function crearTrazo(
         ...base,
         type: "scatter",
         mode: "lines",
-        line: { color, width: 2.2, dash: "dash" },
+        line: { color, width: 2.2 * escalaLinea, dash: "dash" },
       };
       break;
     case "Línea con marcadores":
@@ -319,8 +439,8 @@ export function crearTrazo(
         ...base,
         type: "scatter",
         mode: "lines+markers",
-        line: { color, width: 2 },
-        marker: { color, size: 6 },
+        line: { color, width: 2 * escalaLinea },
+        marker: { color, size: 6 * escalaLinea },
       };
       break;
     case "Línea suavizada":
@@ -329,7 +449,7 @@ export function crearTrazo(
         ...base,
         type: "scatter",
         mode: "lines",
-        line: { color, width: 2.2, shape: "spline", smoothing: 0.35 },
+        line: { color, width: 2.2 * escalaLinea, shape: "spline", smoothing: 0.35 },
       };
   }
 

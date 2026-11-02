@@ -29,9 +29,12 @@ evolución del **Balance Cambiario de Argentina** (Mercado Único y Libre de Cam
 - **Gráficos del Comparador y de Comparar por Sector**: título "Balance Cambiario - BCRA",
   subtítulo con el sector elegido (en el comparador general, "Total de todos los
   sectores") y, abajo a la derecha, "Fuente: EconSur en base a BCRA".
-- **Exportar PNG (1:1)**: botón que descarga el gráfico como imagen cuadrada de 1080 × 1080
-  px a doble resolución (2160 × 2160 px), con tipografías y márgenes propios para ese
-  formato (no es una captura estirada de la pantalla).
+- **Exportar PNG (1,6:1)**: botón que descarga el gráfico como imagen apaisada de 1280 × 800
+  px de diseño a doble resolución (2560 × 1600 px), pensada para un informe de research.
+  Es una figura propia para ese formato (no una captura de la pantalla): cabecera
+  compacta (título, subtítulo y leyenda pegados, sin espacios vacíos), leyenda con el
+  nombre completo de cada serie (sin truncar), fechas y unidades de los ejes al doble de
+  tamaño, y series y ejes al doble de grosor. El archivo se llama `…_16x10.png`.
 - **Etiquetas de valores**: cada serie seleccionada tiene un check "Etiquetas de valores"
   que rotula el gráfico con sus valores en **miles de millones de USD**. Para que se lean
   bien con series largas, se rotulan hasta 14 puntos por serie (siempre incluyendo el

@@ -11,6 +11,9 @@ import {
   estilizarLayout,
   etiquetasMilesMillones,
   ticksEjeX,
+  EXPORT_ALTO,
+  EXPORT_ANCHO,
+  EXPORT_ESCALA,
 } from "@/lib/chartStyle";
 import { getMeses, formatMesesEje, recortarPorRango, formatMes } from "@/lib/data";
 import { serieMetaDe, getValoresSerie } from "@/lib/catalogo";
@@ -19,13 +22,10 @@ import { SerieMeta, SerieSeleccionada } from "@/types";
 
 const TITULO_GRAFICO = "Balance Cambiario - BCRA";
 const FUENTE_DERECHA = "Fuente: EconSur en base a BCRA";
-/** Tamaño de la imagen PNG exportada: cuadrada (1:1). Se exporta al doble de resolución (scale 2) → 2160 × 2160 px. */
-const LADO_PNG = 1080;
-const ESCALA_PNG = 2;
 /** Máximo de etiquetas de valores por serie, para que el gráfico siga siendo legible con series largas. */
 const MAX_ETIQUETAS = 14;
 
-/** Config del gráfico en pantalla: se quita el botón de cámara de Plotly (la exportación oficial es el botón "Exportar PNG 1:1"). */
+/** Config del gráfico en pantalla: se quita el botón de cámara de Plotly (la exportación oficial es el botón "Exportar PNG 1,6:1"). */
 const CONFIG_GRAFICO: Partial<Config> = {
   modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d", "toggleSpikelines", "toImage"],
 };
@@ -135,12 +135,15 @@ export default function ComparadorChart({
           ? "top center"
           : "bottom center";
 
-        return crearTrazo(s.tipo, ejeX, valores, meta.nombreCorto, color, {
+        // En la imagen exportada la leyenda lleva el nombre COMPLETO de la serie (sin truncar)
+        // y las series van al doble de grosor.
+        return crearTrazo(s.tipo, ejeX, valores, exportar ? meta.nombre : meta.nombreCorto, color, {
           yaxis,
           hoverFmt,
+          escalaLinea: exportar ? 2 : 1,
           etiquetas,
           posicionTexto,
-          tamanoTexto: exportar ? 15 : 11,
+          tamanoTexto: exportar ? 24 : 11,
           colorTexto: colorEtiqueta(indice),
         });
       });
@@ -155,7 +158,7 @@ export default function ComparadorChart({
     [construirData]
   );
 
-  /** Arma el layout. `exportar` usa tipografías/márgenes ampliados para la imagen cuadrada. */
+  /** Arma el layout. `exportar` usa tipografías/márgenes ampliados para la imagen apaisada (1,6:1). */
   const construirLayout = useCallback(
     (exportar: boolean): Partial<Layout> => {
       const base = estilizarLayout({
@@ -165,9 +168,10 @@ export default function ComparadorChart({
         fuenteDerecha: FUENTE_DERECHA,
         mostrarLeyenda: true,
         exportar,
+        nombresLeyenda: seleccion.map((s) => obtenerMeta(s.id).nombre),
       });
-      const tamanoTitulo = exportar ? 16 : 12;
-      const ticks = ticksEjeX(meses, ejeX, exportar ? 9 : 12);
+      const tamanoTitulo = exportar ? 26 : 12;
+      const ticks = ticksEjeX(meses, ejeX, exportar ? 8 : 12);
       const l: Partial<Layout> = {
         ...base,
         barmode,
@@ -184,7 +188,7 @@ export default function ComparadorChart({
       }
       return l;
     },
-    [subtitulo, hasta, barmode, meses, ejeX, hay100pct, usaEjeSecundario]
+    [subtitulo, hasta, barmode, meses, ejeX, hay100pct, usaEjeSecundario, seleccion, obtenerMeta]
   );
 
   const layout = useMemo(() => construirLayout(false), [construirLayout]);
@@ -224,9 +228,10 @@ export default function ComparadorChart({
   }, [seleccion, meses, valoresPorId, obtenerMeta, prefijoArchivo]);
 
   /**
-   * Exporta el gráfico como PNG cuadrado (1:1). Se arma una figura aparte, con
-   * tipografías y márgenes pensados para ese formato (no se "estira" el gráfico
-   * de pantalla), y se renderiza a 1080 × 1080 px al doble de resolución.
+   * Exporta el gráfico como PNG apaisado 1,6:1 (16:10), pensado para un informe de
+   * research. Se arma una figura aparte, con tipografías, grosores y cabecera
+   * pensados para ese formato (no se "estira" el gráfico de pantalla), y se
+   * renderiza a 1280 × 800 px de diseño al doble de resolución (2560 × 1600 px).
    */
   const exportarPNG = useCallback(async () => {
     if (seleccion.length === 0 || meses.length === 0) return;
@@ -240,19 +245,19 @@ export default function ComparadorChart({
       const { traces } = construirData(true);
       const layoutExport: Partial<Layout> = {
         ...construirLayout(true),
-        width: LADO_PNG,
-        height: LADO_PNG,
+        width: EXPORT_ANCHO,
+        height: EXPORT_ALTO,
         autosize: false,
       };
 
       const dataUrl: string = await Plotly.toImage(
         { data: traces, layout: layoutExport },
-        { format: "png", width: LADO_PNG, height: LADO_PNG, scale: ESCALA_PNG }
+        { format: "png", width: EXPORT_ANCHO, height: EXPORT_ALTO, scale: EXPORT_ESCALA }
       );
 
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = `${prefijoArchivo}_1x1.png`;
+      a.download = `${prefijoArchivo}_16x10.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -279,10 +284,10 @@ export default function ComparadorChart({
           type="button"
           onClick={exportarPNG}
           disabled={exportando}
-          title="Descarga el gráfico como imagen PNG cuadrada (1:1), lista para informes y redes"
+          title="Descarga el gráfico como imagen PNG apaisada (relación 1,6:1), lista para un informe de research"
           className="flex items-center gap-1.5 rounded-md border border-institucional-border bg-white px-3 py-1.5 text-xs font-medium text-institucional-text transition hover:border-institucional-teal hover:text-institucional-teal disabled:cursor-wait disabled:opacity-60"
         >
-          {exportando ? "Generando imagen…" : "🖼 Exportar PNG (1:1)"}
+          {exportando ? "Generando imagen…" : "🖼 Exportar PNG (1,6:1)"}
         </button>
         <button
           type="button"
