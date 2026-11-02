@@ -41,7 +41,7 @@ export default function RangoFechasBar() {
           type="button"
           onClick={restablecer}
           className="rounded-md px-2 py-1 text-xs font-medium text-institucional-teal transition hover:bg-white"
-          title={`Restablecer a ene-23 – ${formatMes(limites.ultimo)}`}
+          title={`Restablecer a ${formatMes(limites.primero)} – ${formatMes(limites.ultimo)}`}
         >
           Restablecer
         </button>

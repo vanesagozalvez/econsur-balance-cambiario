@@ -52,6 +52,10 @@ export default function SectoresPage() {
     setSeleccion((prev) => prev.map((s) => (s.id === id ? { ...s, ejeSecundario } : s)));
   }, []);
 
+  const cambiarEtiquetas = useCallback((id: SerieId, mostrarEtiquetas: boolean) => {
+    setSeleccion((prev) => prev.map((s) => (s.id === id ? { ...s, mostrarEtiquetas } : s)));
+  }, []);
+
   const obtenerValores = useCallback(
     (id: SerieId) => getValoresSectorConcepto(sectorId, id),
     [sectorId]
@@ -110,6 +114,7 @@ export default function SectoresPage() {
                   color={colorDe(indice)}
                   onCambiarTipo={(tipo) => cambiarTipo(config.id, tipo)}
                   onCambiarEje={(eje) => cambiarEje(config.id, eje)}
+                  onCambiarEtiquetas={(mostrar) => cambiarEtiquetas(config.id, mostrar)}
                   onQuitar={() => quitarSerie(config.id)}
                 />
               ))}
@@ -120,6 +125,7 @@ export default function SectoresPage() {
             seleccion={seleccion}
             obtenerMeta={metaDeSector}
             obtenerValores={obtenerValores}
+            subtitulo={sectorActual?.nombre ?? ""}
             nombreArchivoCSV={`balance-cambiario_${slugArchivo(sectorActual?.nombre ?? sectorId)}`}
           />
         </>

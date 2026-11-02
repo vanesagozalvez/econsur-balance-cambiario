@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import type { Layout } from "plotly.js";
 import PlotlyChart from "./PlotlyChart";
-import { colorDe, crearTrazo, estilizarLayout } from "@/lib/chartStyle";
+import { colorDe, crearTrazo, estilizarLayout, ticksEjeX } from "@/lib/chartStyle";
 import { getMeses, formatMesesEje, recortarPorRango, formatMes } from "@/lib/data";
 import { getValoresSerie } from "@/lib/catalogo";
 import { useRangoFechas } from "@/lib/rangoFechasContext";
@@ -42,16 +43,21 @@ export default function MiniChartCard({ meta, colorIndex }: MiniChartCardProps) 
     return { ...t, fillcolor: hexConAlpha(color, 0.16) };
   }, [ejeX, valoresFiltrados, meta.nombreCorto, color]);
 
-  const layout = useMemo(
-    () =>
-      estilizarLayout({
-        titulo: meta.nombreCorto,
-        subtitulo: meta.unidad,
-        alturaCompacta: true,
-        mostrarLeyenda: false,
-      }),
-    [meta.nombreCorto, meta.unidad]
-  );
+  const layout = useMemo(() => {
+    const base = estilizarLayout({
+      titulo: meta.nombreCorto,
+      subtitulo: meta.unidad,
+      alturaCompacta: true,
+      mostrarLeyenda: false,
+    });
+    // Con períodos largos (hasta ~280 meses) se rotulan pocas marcas, horizontales.
+    const ticks = ticksEjeX(mesesFiltrados, ejeX, 5);
+    const conTicks: Partial<Layout> = {
+      ...base,
+      xaxis: { ...base.xaxis, tickmode: "array", tickvals: ticks.tickvals, ticktext: ticks.ticktext },
+    };
+    return conTicks;
+  }, [meta.nombreCorto, meta.unidad, mesesFiltrados, ejeX]);
 
   const fechaCorte = mesesFiltrados.length ? formatMes(mesesFiltrados[mesesFiltrados.length - 1]) : "s/d";
   const ultimoValor = valoresFiltrados[valoresFiltrados.length - 1] ?? 0;

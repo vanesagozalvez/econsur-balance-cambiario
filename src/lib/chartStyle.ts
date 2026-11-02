@@ -18,10 +18,17 @@ export const PALETA = [
   "#8FBFE0", // celeste claro
 ];
 
+/** Versión más oscura de cada color de la paleta, para que las etiquetas de valores se lean sobre fondo blanco. */
+const PALETA_ETIQUETAS = ["#1F3864", "#2E86AB", "#6B7280", "#B45309", "#4B5563", "#2E86AB"];
+
 export const FUENTE = "Arial, Helvetica, sans-serif";
 
 export function colorDe(indice: number): string {
   return PALETA[indice % PALETA.length];
+}
+
+export function colorEtiqueta(indice: number): string {
+  return PALETA_ETIQUETAS[indice % PALETA_ETIQUETAS.length];
 }
 
 interface EstilizarOpciones {
@@ -29,10 +36,14 @@ interface EstilizarOpciones {
   subtitulo?: string;
   fuente?: string;
   fechaCorte?: string;
+  /** Texto de fuente que va en el borde INFERIOR DERECHO del gráfico. */
+  fuenteDerecha?: string;
   fondoOscuro?: boolean;
   mostrarLeyenda?: boolean;
   esPorcentaje?: boolean;
   alturaCompacta?: boolean; // para minigráficos del dashboard
+  /** Tipografías y márgenes ampliados para la exportación a imagen (PNG 1:1). */
+  exportar?: boolean;
 }
 
 /**
@@ -45,10 +56,12 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
     subtitulo = "",
     fuente = "",
     fechaCorte = "",
+    fuenteDerecha = "",
     fondoOscuro = false,
     mostrarLeyenda = true,
     esPorcentaje = false,
     alturaCompacta = false,
+    exportar = false,
   } = opciones;
 
   const colorFondo = fondoOscuro ? "#0E1117" : "#FFFFFF";
@@ -57,13 +70,23 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
   const colorGrid = fondoOscuro ? "#2D3340" : "#E5E7EB";
   const colorEje = fondoOscuro ? "#4B5563" : "#9CA3AF";
 
-  const tituloTamano = alturaCompacta ? 14 : 20;
-  const subtituloTamano = alturaCompacta ? 11 : 13;
+  const tituloTamano = alturaCompacta ? 14 : exportar ? 30 : 20;
+  const subtituloTamano = alturaCompacta ? 11 : exportar ? 20 : 13;
+  const fuenteBase = alturaCompacta ? 11 : exportar ? 17 : 13;
+  const fuenteLeyenda = alturaCompacta ? 10 : exportar ? 16 : 12;
+  const fuenteTicks = alturaCompacta ? 9 : exportar ? 15 : 11;
+  const fuentePie = exportar ? 14 : 10;
 
   let tituloHtml = `<b style="font-size:${tituloTamano}px;color:${colorTexto}">${titulo}</b>`;
   if (subtitulo) {
     tituloHtml += `<br><span style="font-size:${subtituloTamano}px;color:${colorTextoSecundario}">${subtitulo}</span>`;
   }
+
+  const margen = alturaCompacta
+    ? { l: 44, r: 16, t: 56, b: 44 }
+    : exportar
+    ? { l: 100, r: 70, t: 170, b: 125 }
+    : { l: 60, r: 40, t: 90, b: 80 };
 
   const layout: Partial<Layout> = {
     title: {
@@ -74,13 +97,11 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
       y: alturaCompacta ? 0.95 : 0.97,
       yanchor: "top",
     },
-    font: { family: FUENTE, size: alturaCompacta ? 11 : 13, color: colorTexto },
+    font: { family: FUENTE, size: fuenteBase, color: colorTexto },
     plot_bgcolor: colorFondo,
     paper_bgcolor: colorFondo,
     hovermode: "x unified",
-    margin: alturaCompacta
-      ? { l: 44, r: 16, t: 56, b: 44 }
-      : { l: 60, r: 40, t: 90, b: 70 },
+    margin: margen,
     showlegend: mostrarLeyenda,
     legend: mostrarLeyenda
       ? {
@@ -89,18 +110,20 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
           y: 1.0,
           xanchor: "left",
           x: 0.0,
-          font: { size: alturaCompacta ? 10 : 12, color: "#000000", family: FUENTE },
+          font: { size: fuenteLeyenda, color: "#000000", family: FUENTE },
           bgcolor: "rgba(0,0,0,0)",
         }
       : undefined,
     xaxis: {
+      type: "category",
       showgrid: false,
       showline: true,
       linewidth: 1,
       linecolor: colorEje,
       ticks: "outside",
       tickcolor: colorEje,
-      tickfont: { size: alturaCompacta ? 9 : 11, color: colorTextoSecundario },
+      tickangle: 0,
+      tickfont: { size: fuenteTicks, color: colorTextoSecundario },
     },
     yaxis: {
       showgrid: true,
@@ -108,7 +131,8 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
       gridcolor: colorGrid,
       zeroline: false,
       showline: false,
-      tickfont: { size: alturaCompacta ? 9 : 11, color: colorTextoSecundario },
+      automargin: true,
+      tickfont: { size: fuenteTicks, color: colorTextoSecundario },
       tickformat: esPorcentaje ? ".1%" : undefined,
     },
     yaxis2: {
@@ -117,30 +141,48 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
       showgrid: false,
       zeroline: false,
       showline: false,
-      tickfont: { size: alturaCompacta ? 9 : 11, color: colorTextoSecundario },
+      automargin: true,
+      tickfont: { size: fuenteTicks, color: colorTextoSecundario },
     },
     annotations: [],
   };
 
-  const pieTexto = [fuente, fechaCorte ? `Último dato: ${fechaCorte}` : ""]
-    .filter(Boolean)
-    .join("  ·  ");
+  // Pie del gráfico: a la izquierda fuente/fecha de corte, a la derecha la fuente de los datos.
+  // Se posiciona con `yshift` en píxeles (y no con una fracción del alto) para que quede
+  // siempre pegado al borde inferior, tenga el gráfico el tamaño que tenga (pantalla o PNG 1:1).
+  const pieIzquierdo = [fuente, fechaCorte ? `Último dato: ${fechaCorte}` : ""].filter(Boolean).join("  ·  ");
+  const yshiftPie = exportar ? -70 : -52;
+  const anotaciones: Partial<Annotations>[] = [];
 
-  if (pieTexto && !alturaCompacta) {
-    layout.annotations = [
-      {
-        text: pieTexto,
-        xref: "paper",
-        yref: "paper",
-        x: 0.0,
-        y: -0.16,
-        xanchor: "left",
-        yanchor: "top",
-        showarrow: false,
-        font: { size: 10, color: colorTextoSecundario, family: FUENTE },
-      } as Partial<Annotations>,
-    ];
+  if (pieIzquierdo && !alturaCompacta) {
+    anotaciones.push({
+      text: pieIzquierdo,
+      xref: "paper",
+      yref: "paper",
+      x: 0.0,
+      y: 0,
+      yshift: yshiftPie,
+      xanchor: "left",
+      yanchor: "top",
+      showarrow: false,
+      font: { size: fuentePie, color: colorTextoSecundario, family: FUENTE },
+    } as Partial<Annotations>);
   }
+  if (fuenteDerecha && !alturaCompacta) {
+    anotaciones.push({
+      text: fuenteDerecha,
+      xref: "paper",
+      yref: "paper",
+      x: 1.0,
+      y: 0,
+      yshift: yshiftPie,
+      xanchor: "right",
+      yanchor: "top",
+      showarrow: false,
+      font: { size: fuentePie, color: colorTextoSecundario, family: FUENTE },
+    } as Partial<Annotations>);
+  }
+  layout.annotations = anotaciones as Layout["annotations"];
 
   return layout;
 }
@@ -151,10 +193,62 @@ export function formatearValor(valor: number | null | undefined, esPorcentaje = 
   return valor.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+/**
+ * Elige qué etiquetas mostrar en el eje X (categórico, "ene-03", "feb-03"…) para
+ * que queden horizontales y legibles aunque haya 280+ meses: con muchos meses
+ * rotula solo los eneros (espaciados para no superar `maxTicks`); con rangos
+ * cortos reparte las marcas en forma uniforme.
+ */
+export function ticksEjeX(
+  mesesIso: string[],
+  etiquetas: string[],
+  maxTicks = 12
+): { tickvals: string[]; ticktext: string[] } {
+  const n = mesesIso.length;
+  if (n <= maxTicks) return { tickvals: etiquetas, ticktext: etiquetas };
+
+  let idx: number[] = [];
+  if (n > 24) {
+    const eneros = mesesIso.map((m, i) => (m.endsWith("-01") ? i : -1)).filter((i) => i >= 0);
+    const paso = Math.max(1, Math.ceil(eneros.length / maxTicks));
+    idx = eneros.filter((_, k) => k % paso === 0);
+  }
+  if (idx.length < 2) {
+    const paso = Math.ceil(n / maxTicks);
+    idx = [];
+    for (let i = n - 1; i >= 0; i -= paso) idx.unshift(i);
+  }
+  const textos = idx.map((i) => etiquetas[i]);
+  return { tickvals: textos, ticktext: textos };
+}
+
+/**
+ * Etiquetas de valores en MILES DE MILLONES de USD (los datos están en millones).
+ * Para que sean legibles con series largas (p.ej. 283 meses) no se rotula cada
+ * punto: se muestran como máximo `maxEtiquetas`, parejas entre series y siempre
+ * incluyendo el último dato. Los puntos sin etiqueta quedan como "".
+ */
+export function etiquetasMilesMillones(valores: number[], maxEtiquetas = 14): string[] {
+  const n = valores.length;
+  const paso = Math.max(1, Math.ceil(n / maxEtiquetas));
+  return valores.map((v, i) => {
+    if ((n - 1 - i) % paso !== 0) return "";
+    if (v === null || v === undefined || Number.isNaN(v)) return "";
+    const miles = v / 1000;
+    const decimales = Math.abs(miles) >= 10 ? 1 : 2;
+    return miles.toLocaleString("es-AR", { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+  });
+}
+
 interface TrazoOpciones {
   yaxis?: "y" | "y2";
   hoverFmt?: string;
   barmode100?: boolean;
+  /** Si viene, se dibujan estas etiquetas de texto sobre los puntos/columnas ("" = sin etiqueta). */
+  etiquetas?: string[];
+  posicionTexto?: string;
+  tamanoTexto?: number;
+  colorTexto?: string;
 }
 
 /**
@@ -170,7 +264,7 @@ export function crearTrazo(
   color: string,
   opciones: TrazoOpciones = {}
 ): Partial<PlotData> {
-  const { yaxis = "y", hoverFmt = ",.1f" } = opciones;
+  const { yaxis = "y", hoverFmt = ",.1f", etiquetas, posicionTexto, tamanoTexto = 11, colorTexto = color } = opciones;
   const hovertemplate = `%{y:${hoverFmt}}<extra>${nombreLeyenda}</extra>`;
   const base: Partial<PlotData> = {
     x,
@@ -180,17 +274,20 @@ export function crearTrazo(
     hovertemplate,
   };
 
+  let trazo: Partial<PlotData>;
+
   switch (tipo) {
     case "Columna vertical":
     case "Columna vertical apilada":
     case "Columna vertical 100% apilada":
-      return {
+      trazo = {
         ...base,
         type: "bar",
         marker: { color },
       };
+      break;
     case "Área suavizada":
-      return {
+      trazo = {
         ...base,
         type: "scatter",
         mode: "lines",
@@ -198,8 +295,9 @@ export function crearTrazo(
         fill: "tozeroy",
         opacity: 0.6,
       };
+      break;
     case "Área apilada":
-      return {
+      trazo = {
         ...base,
         type: "scatter",
         mode: "lines",
@@ -207,30 +305,54 @@ export function crearTrazo(
         fill: "tonexty",
         stackgroup: `stack_${yaxis}`,
       };
+      break;
     case "Línea discontinua":
-      return {
+      trazo = {
         ...base,
         type: "scatter",
         mode: "lines",
         line: { color, width: 2.2, dash: "dash" },
       };
+      break;
     case "Línea con marcadores":
-      return {
+      trazo = {
         ...base,
         type: "scatter",
         mode: "lines+markers",
         line: { color, width: 2 },
         marker: { color, size: 6 },
       };
+      break;
     case "Línea suavizada":
     default:
-      return {
+      trazo = {
         ...base,
         type: "scatter",
         mode: "lines",
         line: { color, width: 2.2, shape: "spline", smoothing: 0.35 },
       };
   }
+
+  if (!etiquetas) return trazo;
+
+  const textfont = { size: tamanoTexto, color: colorTexto, family: FUENTE };
+  if (trazo.type === "bar") {
+    return {
+      ...trazo,
+      text: etiquetas,
+      textposition: (posicionTexto ?? "outside") as any,
+      textfont,
+      cliponaxis: false,
+      constraintext: "none",
+    } as Partial<PlotData>;
+  }
+  return {
+    ...trazo,
+    mode: `${trazo.mode}+text` as any,
+    text: etiquetas,
+    textposition: (posicionTexto ?? "top center") as any,
+    textfont,
+  } as Partial<PlotData>;
 }
 
 /** true si el tipo de gráfico usa barras. */

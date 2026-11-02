@@ -12,7 +12,8 @@ evolución del **Balance Cambiario de Argentina** (Mercado Único y Libre de Cam
   discontinua, área suavizada, área apilada, columna, columna apilada o columna 100%
   apilada, con soporte de eje secundario.
 - **Selector de fechas global** (Desde/Hasta) visible en el Dashboard y el Comparador, con
-  valor por defecto **enero 2023 → último dato disponible**.
+  valor por defecto **todo el historial: enero 2003 → último dato disponible** (se puede
+  acotar con el selector).
 - **Comparar por Sector**: elegí uno de los ~29 sectores económicos (Comercio, Industria
   Automotriz, Oleaginosos y Cerealeros, Personas Humanas, etc.) y graficá sus movimientos
   cambiarios en **4 niveles de detalle**, todos seleccionables como series: el total de
@@ -25,6 +26,16 @@ evolución del **Balance Cambiario de Argentina** (Mercado Único y Libre de Cam
   Cada fila se puede desplegar para ver el mismo detalle por Cuenta, Subcuenta, Grupo y
   movimiento final — con exportación a CSV de la tabla completa (todos los sectores y
   niveles, estén o no desplegados en pantalla).
+- **Gráficos del Comparador y de Comparar por Sector**: título "Balance Cambiario - BCRA",
+  subtítulo con el sector elegido (en el comparador general, "Total de todos los
+  sectores") y, abajo a la derecha, "Fuente: EconSur en base a BCRA".
+- **Exportar PNG (1:1)**: botón que descarga el gráfico como imagen cuadrada de 1080 × 1080
+  px a doble resolución (2160 × 2160 px), con tipografías y márgenes propios para ese
+  formato (no es una captura estirada de la pantalla).
+- **Etiquetas de valores**: cada serie seleccionada tiene un check "Etiquetas de valores"
+  que rotula el gráfico con sus valores en **miles de millones de USD**. Para que se lean
+  bien con series largas, se rotulan hasta 14 puntos por serie (siempre incluyendo el
+  último dato); el eje, el hover y el CSV siguen en millones de USD.
 - **Descarga en CSV**: el Comparador general, el de por Sector y la Tabla por Sector
   tienen un botón "Descargar CSV" que exporta los datos exactos que se están mostrando,
   respetando el rango de fechas seleccionado.

@@ -75,6 +75,10 @@ export default function ComparadorPage() {
     setSeleccion((prev) => prev.map((s) => (s.id === id ? { ...s, ejeSecundario } : s)));
   }, []);
 
+  const cambiarEtiquetas = useCallback((id: SerieId, mostrarEtiquetas: boolean) => {
+    setSeleccion((prev) => prev.map((s) => (s.id === id ? { ...s, mostrarEtiquetas } : s)));
+  }, []);
+
   return (
     <div>
       <section className="mb-6">
@@ -126,6 +130,7 @@ export default function ComparadorPage() {
               color={colorDe(indice)}
               onCambiarTipo={(tipo) => cambiarTipo(config.id, tipo)}
               onCambiarEje={(eje) => cambiarEje(config.id, eje)}
+              onCambiarEtiquetas={(mostrar) => cambiarEtiquetas(config.id, mostrar)}
               onQuitar={() => quitarSerie(config.id)}
             />
           ))}

@@ -8,6 +8,7 @@ interface SelectedSeriesRowProps {
   color: string;
   onCambiarTipo: (tipo: TipoGrafico) => void;
   onCambiarEje: (ejeSecundario: boolean) => void;
+  onCambiarEtiquetas: (mostrar: boolean) => void;
   onQuitar: () => void;
 }
 
@@ -17,6 +18,7 @@ export default function SelectedSeriesRow({
   color,
   onCambiarTipo,
   onCambiarEje,
+  onCambiarEtiquetas,
   onQuitar,
 }: SelectedSeriesRowProps) {
   return (
@@ -51,6 +53,19 @@ export default function SelectedSeriesRow({
           className="h-3.5 w-3.5 rounded border-institucional-border text-institucional-navy focus:ring-institucional-teal"
         />
         Eje secundario
+      </label>
+
+      <label
+        className="flex select-none items-center gap-1.5 text-xs text-institucional-textsec"
+        title="Muestra en el gráfico los valores de esta serie, en miles de millones de USD"
+      >
+        <input
+          type="checkbox"
+          checked={!!config.mostrarEtiquetas}
+          onChange={(e) => onCambiarEtiquetas(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-institucional-border text-institucional-navy focus:ring-institucional-teal"
+        />
+        Etiquetas de valores
       </label>
 
       <button

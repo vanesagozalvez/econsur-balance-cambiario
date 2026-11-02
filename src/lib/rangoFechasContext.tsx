@@ -4,8 +4,6 @@ import { createContext, useContext, useMemo, useState, ReactNode } from "react";
 import { limitesDeMeses } from "@/lib/data";
 import { RangoFechas } from "@/types";
 
-const DESDE_POR_DEFECTO = "2023-01";
-
 interface RangoFechasContextValue {
   rango: RangoFechas;
   limites: { primero: string; ultimo: string };
@@ -18,9 +16,9 @@ const RangoFechasContext = createContext<RangoFechasContextValue | null>(null);
 
 export function RangoFechasProvider({ children }: { children: ReactNode }) {
   const limites = useMemo(() => limitesDeMeses(), []);
-  // Por defecto: enero 2023 -> último dato disponible. Si el dataset arrancara
-  // después de 2023-01 (no es el caso hoy), usamos el primer mes disponible.
-  const desdeDefault = DESDE_POR_DEFECTO >= limites.primero ? DESDE_POR_DEFECTO : limites.primero;
+  // Por defecto: TODO el historial disponible (primer mes del dataset, hoy
+  // enero 2003) -> último dato disponible.
+  const desdeDefault = limites.primero;
 
   const [rango, setRango] = useState<RangoFechas>({ desde: desdeDefault, hasta: limites.ultimo });
 

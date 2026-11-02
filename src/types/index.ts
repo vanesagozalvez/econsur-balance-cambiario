@@ -88,6 +88,8 @@ export interface SerieSeleccionada {
   id: SerieId;
   tipo: TipoGrafico;
   ejeSecundario: boolean;
+  /** Si es true, el gráfico rotula la serie con sus valores en miles de millones de USD. */
+  mostrarEtiquetas?: boolean;
 }
 
 /** Rango de fechas global (Dashboard + Comparador), en formato "YYYY-MM". */
