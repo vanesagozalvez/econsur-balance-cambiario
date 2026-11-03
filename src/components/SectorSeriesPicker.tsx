@@ -2,11 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useOnClickOutside } from "@/lib/useOnClickOutside";
-import { arbolSector, NodoCuentaSector, NodoGrupoSector, NodoSubcuentaSector } from "@/lib/sectoresData";
+import { arbolSectores, NodoCuentaSector, NodoGrupoSector, NodoSubcuentaSector } from "@/lib/sectoresData";
 import { SerieId, SerieMeta } from "@/types";
 
 interface SectorSeriesPickerProps {
-  sectorId: string;
+  /** Uno o varios sectores (agrupados): se ofrece la unión de sus totales y movimientos. */
+  sectorIds: string[];
   seleccionadas: SerieId[];
   onAgregar: (id: SerieId) => void;
   maxSeries?: number;
@@ -38,7 +39,7 @@ function filtrarArbol(arbol: NodoCuentaSector[], q: string): NodoCuentaSector[] 
 }
 
 export default function SectorSeriesPicker({
-  sectorId,
+  sectorIds,
   seleccionadas,
   onAgregar,
   maxSeries = 8,
@@ -48,7 +49,7 @@ export default function SectorSeriesPicker({
   const ref = useRef<HTMLDivElement>(null);
   useOnClickOutside(ref, () => setAbierto(false));
 
-  const arbol = useMemo(() => arbolSector(sectorId), [sectorId]);
+  const arbol = useMemo(() => arbolSectores(sectorIds), [sectorIds]);
   const alcanzoLimite = seleccionadas.length >= maxSeries;
 
   const q = busqueda.trim().toLowerCase();

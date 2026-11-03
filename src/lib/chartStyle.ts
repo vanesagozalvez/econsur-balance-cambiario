@@ -68,6 +68,32 @@ function estimarFilasLeyenda(nombres: string[], tamanoFuente: number, anchoDispo
   return filas;
 }
 
+/**
+ * Parte un subtítulo largo en varias líneas, cortando SOLO en los " + " que separan
+ * sectores agrupados (nunca en el medio del nombre de un sector). Las líneas siguientes
+ * empiezan con "+ " para que se entienda que continúan la enumeración.
+ */
+export function envolverSubtitulo(texto: string, maxCaracteres: number): string[] {
+  if (texto.length <= maxCaracteres) return [texto];
+  const partes = texto.split(" + ");
+  const lineas: string[] = [];
+  let actual = "";
+  partes.forEach((parte, i) => {
+    const trozo = i === 0 ? parte : ` + ${parte}`;
+    if (actual && (actual + trozo).length > maxCaracteres) {
+      lineas.push(actual);
+      actual = `+ ${parte}`;
+    } else {
+      actual += trozo;
+    }
+  });
+  if (actual) lineas.push(actual);
+  return lineas;
+}
+
+/** Tamaño del subtítulo cuando en la exportación va en líneas propias, debajo del título. */
+const EXPORT_TAM_SUBTITULO_APARTE = 20;
+
 interface EstilizarOpciones {
   titulo: string;
   subtitulo?: string;
@@ -137,21 +163,39 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
   }
 
   let tituloHtml = `<b style="font-size:${tituloTamano}px;color:${colorTexto}">${titulo}</b>`;
+  let altoEncabezado = EXPORT_ALTO_ENCABEZADO;
+  let lineasSubtituloAparte: string[] | null = null; // exportación: subtítulo largo, en líneas propias
+  let lineasExtraPantalla = 0;
+  const estiloSub = (px: number) => `font-size:${px}px;color:${colorTextoSecundario}`;
+
   if (subtitulo && esExp) {
     // Exportación: el subtítulo va a la DERECHA del título, en la misma línea (misma línea base).
-    // Si el subtítulo es largo (p.ej. "Productos Minerales no Metálicos (Cementos, …)") se achica
-    // lo justo para que el encabezado entre completo en el ancho de la imagen.
+    // Si es largo se achica lo justo para que el encabezado entre completo en el ancho de la imagen.
     const separacion = "\u00A0\u00A0\u00A0\u00A0";
     const disponible = EXPORT_ANCHO - EXPORT_MARGEN_LATERAL - 24;
     const anchoTitulo = titulo.length * tituloTamano * 0.6 + 42;
-    let tamSub = subtituloTamano;
-    for (const t of [24, 22, 20, 18, 16]) {
-      tamSub = t;
-      if (anchoTitulo + subtitulo.length * t * 0.54 <= disponible) break;
+    let tamSub = 0;
+    for (const t of [24, 22, 20, 18]) {
+      if (anchoTitulo + subtitulo.length * t * 0.54 <= disponible) {
+        tamSub = t;
+        break;
+      }
     }
-    tituloHtml += `${separacion}<span style="font-size:${tamSub}px;color:${colorTextoSecundario}">${subtitulo}</span>`;
+    if (tamSub) {
+      tituloHtml += `${separacion}<span style="${estiloSub(tamSub)}">${subtitulo}</span>`;
+    } else {
+      // No entra ni a 18 px (p.ej. varios sectores agrupados): el subtítulo pasa a líneas propias,
+      // debajo del título, partido en los " + " entre sectores. Se dibuja como anotación (con
+      // posición exacta en píxeles) y el encabezado crece lo que ocupen esas líneas.
+      const maxCaracteres = Math.floor(disponible / (EXPORT_TAM_SUBTITULO_APARTE * 0.54));
+      lineasSubtituloAparte = envolverSubtitulo(subtitulo, maxCaracteres);
+      altoEncabezado = 64 + Math.ceil(EXPORT_TAM_SUBTITULO_APARTE * 1.3) * lineasSubtituloAparte.length;
+    }
   } else if (subtitulo) {
-    tituloHtml += `<br><span style="font-size:${subtituloTamano}px;color:${colorTextoSecundario}">${subtitulo}</span>`;
+    // Pantalla: el subtítulo va debajo del título; si es largo se parte en líneas (cada una con su estilo).
+    const lineas = envolverSubtitulo(subtitulo, 110);
+    tituloHtml += "<br>" + lineas.map((l) => `<span style="${estiloSub(subtituloTamano)}">${l}</span>`).join("<br>");
+    lineasExtraPantalla = lineas.length - 1;
   }
 
   // Márgenes. En la exportación son mínimos (los ejes los amplían solos con `automargin`)
@@ -165,10 +209,10 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
         // está centrada en su marca y no debe cortarse). Los ejes verticales lo amplían solos.
         l: EXPORT_MARGEN_LATERAL,
         r: EXPORT_MARGEN_LATERAL,
-        t: EXPORT_ALTO_ENCABEZADO + altoLeyenda + EXPORT_AIRE_SOBRE_GRAFICO,
+        t: altoEncabezado + altoLeyenda + EXPORT_AIRE_SOBRE_GRAFICO,
         b: EXPORT_MARGEN_INFERIOR,
       }
-    : { l: 60, r: 40, t: 90, b: 80 };
+    : { l: 60, r: 40, t: 90 + lineasExtraPantalla * 20, b: 80 };
   const altoAreaGrafico = EXPORT_ALTO - margen.t - margen.b;
 
   const titleConfig: any = esExp
@@ -206,7 +250,7 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
         xanchor: "left",
         x: 0,
         yanchor: "top",
-        y: 1 + (margen.t - EXPORT_ALTO_ENCABEZADO) / altoAreaGrafico,
+        y: 1 + (margen.t - altoEncabezado) / altoAreaGrafico,
         font: { size: fuenteLeyenda, color: "#000000", family: FUENTE },
         bgcolor: "rgba(0,0,0,0)",
       }
@@ -306,6 +350,21 @@ export function estilizarLayout(opciones: EstilizarOpciones): Partial<Layout> {
       yanchor: "top",
       showarrow: false,
       font: { size: fuentePie, color: colorTextoSecundario, family: FUENTE },
+    } as Partial<Annotations>);
+  }
+  if (lineasSubtituloAparte) {
+    // Primera línea del subtítulo a 58 px del borde superior (justo debajo de la línea del título).
+    anotaciones.push({
+      text: lineasSubtituloAparte.join("<br>"),
+      xref: "paper",
+      yref: "paper",
+      x: 0,
+      y: 1 + (margen.t - 58) / altoAreaGrafico,
+      xanchor: "left",
+      yanchor: "top",
+      align: "left",
+      showarrow: false,
+      font: { size: EXPORT_TAM_SUBTITULO_APARTE, color: colorTextoSecundario, family: FUENTE },
     } as Partial<Annotations>);
   }
   layout.annotations = anotaciones as Layout["annotations"];

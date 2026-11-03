@@ -21,11 +21,17 @@ evolución del **Balance Cambiario de Argentina** (Mercado Único y Libre de Cam
   Corriente → Bienes"), el total de un Grupo (p.ej. "→ Cobros de exportaciones de
   bienes") y el movimiento puntual final (p.ej. "Cobros de exportaciones") — mismo motor
   de gráficos que el Comparador general.
+  Con el botón **Agrupar** se pueden elegir hasta **6 sectores** y sumar mes a mes todos
+  sus totales y movimientos, para graficarlos como si fueran un único sector (p.ej.
+  Petróleo + Gas + Electricidad = sector energético). El subtítulo del gráfico y de la
+  imagen PNG lista los sectores agrupados; si es largo, se parte en varias líneas.
 - **Tabla por Sector**: una fila por sector con 8 indicadores (último mes, acumulados de
   3, YTD y 12 meses en miles de millones de USD, y sus 4 variaciones % interanuales).
   Cada fila se puede desplegar para ver el mismo detalle por Cuenta, Subcuenta, Grupo y
-  movimiento final — con exportación a CSV de la tabla completa (todos los sectores y
-  niveles, estén o no desplegados en pantalla).
+  movimiento final. **Cada columna se puede ordenar** con un clic en su encabezado (de mayor
+  a menor; otro clic, de menor a mayor; otro, orden original); el orden se aplica dentro
+  de cada nivel, así que la jerarquía se mantiene. Exportación a CSV de la tabla completa
+  (todos los sectores y niveles, estén o no desplegados), en el orden elegido.
 - **Gráficos del Comparador y de Comparar por Sector**: título "Balance Cambiario - BCRA",
   subtítulo con el sector elegido (en el comparador general, "Total de todos los
   sectores") y, abajo a la derecha, "Fuente: EconSur en base a BCRA".
@@ -98,7 +104,8 @@ balance-cambiario-argentina/
 │   │   ├── MiniChartCard.tsx           # Tarjeta de minigráfico del dashboard
 │   │   ├── ComparadorChart.tsx         # Gráfico combinado (Comparador y Por Sector) + botón CSV
 │   │   ├── SeriesPicker.tsx            # Selector: indicadores principales + árbol de detalle
-│   │   ├── SectorSeriesPicker.tsx      # Selector: totales (Cuenta/Subcuenta/Grupo) + movimientos, por sector
+│   │   ├── SectorSeriesPicker.tsx      # Selector: totales (Cuenta/Subcuenta/Grupo) + movimientos, de uno o varios sectores
+│   │   ├── AgruparSectores.tsx         # Botón "Agrupar": suma de hasta 6 sectores
 │   │   ├── SelectedSeriesRow.tsx       # Config por serie (tipo de gráfico, eje)
 │   │   ├── TablaSectoresExpandible.tsx # Tabla de indicadores por sector, expandible + botón CSV
 │   │   ├── RangoFechasBar.tsx          # Selector global de fechas (Desde/Hasta)

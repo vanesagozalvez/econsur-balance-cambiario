@@ -117,9 +117,44 @@ export interface NodoCuentaSector {
  * movimiento puntual "Cobros de exportaciones", para ese sector.
  */
 export function arbolSector(sectorId: string): NodoCuentaSector[] {
-  const detalleSector = dataset.porSector?.[sectorId]?.detalle ?? {};
-  const idsDisponibles = new Set(Object.keys(detalleSector));
+  return arbolDesdeIds(idsDisponiblesSectores([sectorId]));
+}
 
+/**
+ * Árbol Cuenta > Subcuenta > Grupo > Movimiento para un GRUPO de sectores: incluye todo
+ * lo que tenga al menos uno de los sectores (la unión), porque al agrupar se suma lo que
+ * cada sector aporte y los que no tienen ese movimiento aportan cero.
+ */
+export function arbolSectores(sectorIds: string[]): NodoCuentaSector[] {
+  return arbolDesdeIds(idsDisponiblesSectores(sectorIds));
+}
+
+/** Ids (totales de Cuenta/Subcuenta/Grupo y movimientos) con datos en al menos uno de los sectores. */
+export function idsDisponiblesSectores(sectorIds: string[]): Set<string> {
+  const ids = new Set<string>();
+  for (const sectorId of sectorIds) {
+    for (const id of Object.keys(dataset.porSector?.[sectorId]?.detalle ?? {})) ids.add(id);
+  }
+  return ids;
+}
+
+/**
+ * Suma, mes a mes, los valores de un mismo total/movimiento a través de varios sectores
+ * (los importes ya vienen con signo: ingresos +, egresos −, así que la suma es directa).
+ * Un sector que no registra ese movimiento aporta cero.
+ */
+export function getValoresSectoresAgrupados(sectorIds: string[], id: string): number[] {
+  let suma: number[] = [];
+  for (const sectorId of sectorIds) {
+    const valores = dataset.porSector?.[sectorId]?.detalle?.[id];
+    if (!valores) continue;
+    if (suma.length === 0) suma = new Array(valores.length).fill(0);
+    for (let i = 0; i < valores.length; i++) suma[i] += valores[i] ?? 0;
+  }
+  return suma;
+}
+
+function arbolDesdeIds(idsDisponibles: Set<string>): NodoCuentaSector[] {
   const cuentas = new Map<string, Map<string, Map<string, SerieMeta[]>>>();
   const cuentaTotalId = new Map<string, string>();
   const subcuentaTotalId = new Map<string, string>(); // clave "cuenta|subcuenta"
